@@ -3,6 +3,7 @@
 #include <sstream>
 #include <string>
 #include <vector>
+#include <iostream>
 
 #include "linux_parser.h"
 #include <unistd.h>
@@ -77,7 +78,7 @@ float LinuxParser::MemoryUtilization() {
   if(stream.is_open()){
     while(std::getline(stream, line)){
       // so that we don't count the : as a word 
-      std::replace(line.begin(), line.end(), ":", " ");
+      std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line);
       while(linestream >> key >> value){
         if(key == "MemTotal"){
@@ -86,7 +87,7 @@ float LinuxParser::MemoryUtilization() {
         }
         else if(key == "MemFree"){
           memFree = std::stof(value); 
-          return ((memTotal - memFree)/(memTotal*1000));
+          return ((memTotal - memFree)/memTotal);
         }
       }
     }
@@ -201,7 +202,7 @@ string LinuxParser::Ram(int pid) {
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
   if (stream.is_open()){
     while(std::getline(stream, line)){
-      std::replace(line.begin(), line.end(), ":", " ");
+      std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line); 
       while(linestream >> key >> value){
         if(key == "VmSize"){
@@ -220,7 +221,7 @@ string LinuxParser::Uid(int pid) {
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
   if (stream.is_open()){
     while(std::getline(stream, line)){
-      std::replace(line.begin(), line.end(), ":", " ");
+      std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line); 
       while(linestream >> key >> value){
         if(key == "Uid"){
@@ -240,7 +241,7 @@ string LinuxParser::User(int pid) {
   std::ifstream stream(kPasswordPath);
   if (stream.is_open()){
     while(std::getline(stream, line)){
-      std::replace(line.begin(), line.end(), ":", " ");
+      std::replace(line.begin(), line.end(), ':', ' ');
       std::istringstream linestream(line); 
       while(linestream >> key >> x >> value){
         if(value == uid){
@@ -254,21 +255,38 @@ string LinuxParser::User(int pid) {
 
 // TODO: Read and return the uptime of a process
 // REMOVE: [[maybe_unused]] once you define the function
-long LinuxParser::UpTime(int pid[[maybe_unused]]) {
-  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatusFilename);
-  string line, number;
-  string time; 
-  int index = 0; 
+long LinuxParser::UpTime(int pid) {
+  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  std::string line;
+  if (stream.is_open()) {
+    std::getline(stream, line);
+    std::istringstream stream(line);
+    std::istream_iterator<std::string> start(stream), end;
+    std::vector<std::string> numbers(start, end);
+    return (std::stol(numbers[21]) / sysconf(_SC_CLK_TCK));
+  }
+  return 0;
+}
+
+// Obtain the cpu data needed for process specific utilization calculations 
+vector<long int> LinuxParser::GetProcessCpuInfo(int pid){
+  std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
+  string line, value, utime, stime, cutime, cstime, starttime; 
+  int counter = 0; 
+  vector<long int> cpuInfo{};
   if (stream.is_open()){
     std::getline(stream, line);
     std::istringstream linestream(line);
-    while (linestream >> number){
-      if (index == 21){
-        time = number; 
-        break; 
+    while((linestream >> value) && counter<=21){
+      if (counter==13 || counter==14 || counter==15 || counter==16 || counter==21){
+        try{
+          cpuInfo.push_back(std::stol(value));
+        } catch(...){
+          std::cout << "ERROR HERE" << "\n"; 
+        }
       }
-      index++; 
+      counter++; 
     }
-    return (UpTime() - std::stol(time) / sysconf(_SC_CLK_TCK)); 
   }
+  return cpuInfo; 
 }
