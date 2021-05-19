@@ -29,7 +29,7 @@ float Process::CpuUtilization() const {
         return 0.0; 
     }
     else{
-        return (100 * (total_time / sysconf(_SC_CLK_TCK) / seconds));
+        return (total_time / sysconf(_SC_CLK_TCK) / seconds);
     }  
 }
 
@@ -40,7 +40,7 @@ string Process::Command() {
 
 // TODO: Return this process's memory utilization
 string Process::Ram() {
-    return LinuxParser::Ram(pid_); 
+    return std::to_string((int)std::stof(LinuxParser::Ram(pid_))/1000); 
 }
 
 // TODO: Return the user (name) that generated this process

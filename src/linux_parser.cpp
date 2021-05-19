@@ -257,15 +257,16 @@ string LinuxParser::User(int pid) {
 // REMOVE: [[maybe_unused]] once you define the function
 long LinuxParser::UpTime(int pid) {
   std::ifstream stream(kProcDirectory + std::to_string(pid) + kStatFilename);
-  std::string line;
+  std::string line, num;
+  vector<string> numbers{}; 
   if (stream.is_open()) {
     std::getline(stream, line);
-    std::istringstream stream(line);
-    std::istream_iterator<std::string> start(stream), end;
-    std::vector<std::string> numbers(start, end);
-    return (std::stol(numbers[21]) / sysconf(_SC_CLK_TCK));
+    std::istringstream linestream(line);
+    while(linestream >> num){
+      numbers.push_back(num);
+    }
   }
-  return 0;
+  return (UpTime() - std::stol(numbers[21]) / sysconf(_SC_CLK_TCK));
 }
 
 // Obtain the cpu data needed for process specific utilization calculations 
